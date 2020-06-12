@@ -1,3 +1,5 @@
-cryptography>=1.5
-requests
-future
+cryptography>=2.9.2
+requests~=2.23.0
+future~=0.18.2
+autobahn==20.4.3
+Twisted==20.3.0
