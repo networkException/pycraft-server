@@ -9,6 +9,7 @@ from minecraft import authentication
 from minecraft.networking.connection import Connection
 from minecraft.networking.packets import Packet, serverbound, ChatMessagePacket, PlayerListItemPacket
 from minecraft.networking.packets.clientbound.play import PlayerListHeaderAndFooterPacket
+from minecraft.networking.packets.serverbound.play import ClientSettingsPacket
 
 connections = dict()
 
@@ -18,6 +19,15 @@ class WebSocketServer(WebSocketServerProtocol):
 
     def onConnect(self, request):
         print("Client connecting: {0}".format(request.peer))
+
+        settings = ClientSettingsPacket()
+        settings.locale = 'de_DE'
+        settings.view_distance = 1
+        settings.chat_mode = ClientSettingsPacket.ChatMode.FULL
+        settings.chat_colors = True
+        settings.displayed_skin_parts = ClientSettingsPacket.SkinParts.ALL
+        settings.main_hand = ClientSettingsPacket.Hand.RIGHT
+        connections[self.username]["connection"].write_packet(settings)
 
     def onOpen(self):
         print("WebSocket connection open.")
