@@ -101,7 +101,6 @@ class WebSocketServer(WebSocketServerProtocol):
 
                     connection = Connection(message["host"], int(message["port"]), auth_token=auth_token)
                     connection.register_packet_listener(self.sendPacket, Packet, early=True)
-                    connection.connect()
 
                     connections[message["username"]] = {
                         "password": message["password"],
@@ -112,6 +111,8 @@ class WebSocketServer(WebSocketServerProtocol):
                     }
 
                     self.username = message["username"]
+
+                    connection.connect()
 
                     print("Started new session as " + auth_token.username + " on " + message["host"])
 
