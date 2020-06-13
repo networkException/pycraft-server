@@ -8,7 +8,7 @@ from autobahn.asyncio.websocket import WebSocketServerProtocol, WebSocketServerF
 from minecraft import authentication
 from minecraft.networking.connection import Connection
 from minecraft.networking.packets import Packet, serverbound, ChatMessagePacket, PlayerListItemPacket
-from minecraft.networking.packets.clientbound.play import PlayerListHeaderAndFooterPacket
+from minecraft.networking.packets.clientbound.play import PlayerListHeaderAndFooterPacket, JoinGamePacket
 from minecraft.networking.packets.serverbound.play import ClientSettingsPacket
 
 connections = dict()
@@ -19,15 +19,6 @@ class WebSocketServer(WebSocketServerProtocol):
 
     def onConnect(self, request):
         print("Client connecting: {0}".format(request.peer))
-
-        settings = ClientSettingsPacket()
-        settings.locale = 'de_DE'
-        settings.view_distance = 1
-        settings.chat_mode = ClientSettingsPacket.ChatMode.FULL
-        settings.chat_colors = True
-        settings.displayed_skin_parts = ClientSettingsPacket.SkinParts.ALL
-        settings.main_hand = ClientSettingsPacket.Hand.RIGHT
-        connections[self.username]["connection"].write_packet(settings)
 
     def onOpen(self):
         print("WebSocket connection open.")
@@ -80,6 +71,18 @@ class WebSocketServer(WebSocketServerProtocol):
 
                     self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
 
+    def onGameJoin(self, packet: JoinGamePacket):
+        print("Joined host")
+
+        settings = ClientSettingsPacket()
+        settings.locale = 'de_DE'
+        settings.view_distance = 1
+        settings.chat_mode = ClientSettingsPacket.ChatMode.FULL
+        settings.chat_colors = True
+        settings.displayed_skin_parts = ClientSettingsPacket.SkinParts.ALL
+        settings.main_hand = ClientSettingsPacket.Hand.RIGHT
+        connections[self.username]["connection"].write_packet(settings)
+
     def onMessage(self, payload, isBinary):
         if not isBinary:
             message = json.loads(payload.decode('utf8'))
@@ -101,6 +104,8 @@ class WebSocketServer(WebSocketServerProtocol):
 
                     connection = Connection(message["host"], int(message["port"]), auth_token=auth_token)
                     connection.register_packet_listener(self.sendPacket, Packet, early=True)
+                    connection.register_packet_listener(self.onGameJoin, JoinGamePacket, early=True)
+                    connection.connect()
 
                     connections[message["username"]] = {
                         "password": message["password"],
@@ -111,8 +116,6 @@ class WebSocketServer(WebSocketServerProtocol):
                     }
 
                     self.username = message["username"]
-
-                    connection.connect()
 
                     print("Started new session as " + auth_token.username + " on " + message["host"])
 
