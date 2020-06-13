@@ -6,7 +6,6 @@ import json
 from autobahn.asyncio.websocket import WebSocketServerProtocol, WebSocketServerFactory
 
 from minecraft import authentication
-from minecraft.authentication import AuthenticationToken
 from minecraft.networking.connection import Connection
 from minecraft.networking.packets import Packet, serverbound, ChatMessagePacket, PlayerListItemPacket
 from minecraft.networking.packets.clientbound.play import PlayerListHeaderAndFooterPacket
@@ -25,15 +24,51 @@ class WebSocketServer(WebSocketServerProtocol):
 
     def sendPacket(self, packet: Packet):
         if type(packet) is ChatMessagePacket:
-            self.sendMessage(packet.json_data.encode('utf8'), False)
+            data = {"type": "ChatMessagePacket", "packet": packet.json_data}
 
-        if type(Packet) is PlayerListHeaderAndFooterPacket:
-            data = {"header": packet.header, "footer": packet.footer}
+            self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
 
-            self.sendMessage(json.dumps(data).encode("utf8"), True)
+        if type(packet) is PlayerListHeaderAndFooterPacket:
+            data = {"type": "PlayerListHeaderAndFooterPacket", "packet":
+                {"header": packet.header, "footer": packet.footer}}
 
-        if type(Packet) is PlayerListItemPacket:
-            self.sendMessage(("%s" % packet).encode("utf8"), True)
+            self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
+
+        if type(packet) is PlayerListItemPacket:
+            for action in packet.actions:
+                if type(action) is PlayerListItemPacket.AddPlayerAction:
+                    data = {"type": "AddPlayerAction", "packet": {
+                        "uuid": action.uuid,
+                        "name": action.name,
+                        "gamemode": action.gamemode,
+                        "ping": action.ping,
+                        "displayName": action.display_name
+                    }}
+
+                    self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
+
+                if type(action) is PlayerListItemPacket.RemovePlayerAction:
+                    data = {"type": "RemovePlayerAction", "packet": {
+                        "uuid": action.uuid
+                    }}
+
+                    self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
+
+                if type(action) is PlayerListItemPacket.UpdateDisplayNameAction:
+                    data = {"type": "UpdateDisplayNameAction", "packet": {
+                        "uuid": action.uuid,
+                        "displayName": action.display_name
+                    }}
+
+                    self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
+
+                if type(action) is PlayerListItemPacket.UpdateLatencyAction:
+                    data = {"type": "UpdateLatencyAction", "packet": {
+                        "uuid": action.uuid,
+                        "ping": action.ping
+                    }}
+
+                    self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
 
     def onMessage(self, payload, isBinary):
         if not isBinary:
@@ -43,6 +78,8 @@ class WebSocketServer(WebSocketServerProtocol):
                 try:
                     if message["username"] in connections and message["password"] == connections[message["username"]]["password"]:
                         connections[message["username"]]["connection"].register_packet_listener(self.sendPacket, Packet, early=True)
+
+                        self.username = message["username"]
 
                         print("Resuming session as " + connections[message["username"]]["auth_token"].username + " on " + message["host"])
                         return
@@ -89,10 +126,7 @@ class WebSocketServer(WebSocketServerProtocol):
                 self._closeConnection()
 
     def onClose(self, wasClean, code, reason):
-        connections[self.username]["connection"].packet_listeners.clear()
-        connections[self.username]["connection"].outgoing_packet_listeners.clear()
         connections[self.username]["connection"].early_packet_listeners.clear()
-        connections[self.username]["connection"].early_outgoing_packet_listeners.clear()
 
         print("Cleared registered listeners")
 
