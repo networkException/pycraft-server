@@ -6,9 +6,10 @@ import json
 from autobahn.asyncio.websocket import WebSocketServerProtocol, WebSocketServerFactory
 
 from minecraft import authentication
+from minecraft.exceptions import LoginDisconnect
 from minecraft.networking.connection import Connection
 from minecraft.networking.packets import Packet, serverbound, ChatMessagePacket, PlayerListItemPacket
-from minecraft.networking.packets.clientbound.play import PlayerListHeaderAndFooterPacket, JoinGamePacket
+from minecraft.networking.packets.clientbound.play import PlayerListHeaderAndFooterPacket, JoinGamePacket, DisconnectPacket
 from minecraft.networking.packets.serverbound.play import ClientSettingsPacket
 
 connections = dict()
@@ -83,6 +84,18 @@ class WebSocketServer(WebSocketServerProtocol):
         settings.main_hand = ClientSettingsPacket.Hand.RIGHT
         connections[self.username]["connection"].write_packet(settings)
 
+    def onDisconnection(self, packet: DisconnectPacket):
+        data = {"type": "DisconnectionPacket", "packet": packet.json_data}
+
+        self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
+
+    def onFailedLogin(self, packet: LoginDisconnect):
+        data = {"type": "LoginDisconnect", "packet": packet.json_data}
+
+        self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
+
+        self._closeConnection()
+
     def onMessage(self, payload, isBinary):
         if not isBinary:
             message = json.loads(payload.decode('utf8'))
@@ -105,6 +118,8 @@ class WebSocketServer(WebSocketServerProtocol):
                     connection = Connection(message["host"], int(message["port"]), auth_token=auth_token)
                     connection.register_packet_listener(self.sendPacket, Packet, early=True)
                     connection.register_packet_listener(self.onGameJoin, JoinGamePacket, early=True)
+                    connection.register_packet_listener(self.onDisconnection, DisconnectPacket)
+                    connection.register_exception_handler(self.onFailedLogin, LoginDisconnect, early=True)
                     connection.connect()
 
                     connections[message["username"]] = {
@@ -138,6 +153,9 @@ class WebSocketServer(WebSocketServerProtocol):
                 connections[self.username]["connection"].disconnect()
                 connections.pop(self.username)
                 self._closeConnection()
+
+            elif message["type"] == "connect":
+                connections[self.username]["connection"].connect()
 
     def onClose(self, wasClean, code, reason):
         connections[self.username]["connection"].early_packet_listeners.clear()
