@@ -89,14 +89,6 @@ class WebSocketServer(WebSocketServerProtocol):
 
         self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
 
-    @Connection.exception_handler(LoginDisconnect, early=True)
-    def onFailedLogin(self, exc, exc_info):
-        data = {"type": "LoginDisconnect", "packet": exc}
-
-        self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
-
-        self._closeConnection()
-
     def onMessage(self, payload, isBinary):
         if not isBinary:
             message = json.loads(payload.decode('utf8'))
@@ -121,6 +113,14 @@ class WebSocketServer(WebSocketServerProtocol):
                     connection.register_packet_listener(self.onGameJoin, JoinGamePacket, early=True)
                     connection.register_packet_listener(self.onDisconnection, DisconnectPacket)
                     connection.connect()
+
+                    @connection.exception_handler(LoginDisconnect, early=True)
+                    def onFailedLogin(exc, exc_info):
+                        data = {"type": "LoginDisconnect", "packet": exc}
+
+                        self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
+
+                        self._closeConnection()
 
                     connections[message["username"]] = {
                         "password": message["password"],
