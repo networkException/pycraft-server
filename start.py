@@ -159,9 +159,10 @@ class WebSocketServer(WebSocketServerProtocol):
                 connections[self.username]["connection"].connect()
 
     def onClose(self, wasClean, code, reason):
-        connections[self.username]["connection"].early_packet_listeners.clear()
+        if self.username in connections:
+            connections[self.username]["connection"].early_packet_listeners.clear()
 
-        print("Cleared registered listeners")
+            print("Cleared registered listeners")
 
         print("WebSocket connection closed: {0}".format(reason))
 
