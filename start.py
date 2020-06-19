@@ -90,8 +90,8 @@ class WebSocketServer(WebSocketServerProtocol):
         self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
 
     @Connection.exception_handler(LoginDisconnect, early=True)
-    def onFailedLogin(self, packet: LoginDisconnect):
-        data = {"type": "LoginDisconnect", "packet": packet.json_data}
+    def onFailedLogin(self, exc, exc_info):
+        data = {"type": "LoginDisconnect", "packet": exc}
 
         self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
 
