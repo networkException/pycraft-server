@@ -89,6 +89,7 @@ class WebSocketServer(WebSocketServerProtocol):
 
         self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
 
+    @Connection.exception_handler(LoginDisconnect, early=True)
     def onFailedLogin(self, packet: LoginDisconnect):
         data = {"type": "LoginDisconnect", "packet": packet.json_data}
 
@@ -119,7 +120,6 @@ class WebSocketServer(WebSocketServerProtocol):
                     connection.register_packet_listener(self.sendPacket, Packet, early=True)
                     connection.register_packet_listener(self.onGameJoin, JoinGamePacket, early=True)
                     connection.register_packet_listener(self.onDisconnection, DisconnectPacket)
-                    connection.register_exception_handler(self.onFailedLogin, LoginDisconnect, early=True)
                     connection.connect()
 
                     connections[message["username"]] = {
