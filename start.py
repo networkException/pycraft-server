@@ -119,7 +119,8 @@ class WebSocketServer(WebSocketServerProtocol):
                         data = {"type": "LoginDisconnect", "packet": str(exc)}
 
                         self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
-
+                        connections[self.username]["connection"].disconnect()
+                        connections.pop(self.username)
                         self._closeConnection()
 
                     connections[message["username"]] = {
