@@ -116,7 +116,7 @@ class WebSocketServer(WebSocketServerProtocol):
 
                     @connection.exception_handler(LoginDisconnect, early=True)
                     def onFailedLogin(exc, exc_info):
-                        data = {"type": "LoginDisconnect", "packet": exc}
+                        data = {"type": "LoginDisconnect", "packet": str(exc)}
 
                         self.sendMessage(json.dumps(data, ensure_ascii=False).encode('utf8'), isBinary=False)
 
