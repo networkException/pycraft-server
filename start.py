@@ -25,9 +25,6 @@ class WebSocketServer(WebSocketServerProtocol):
         print("WebSocket connection open.")
 
     def sendPacket(self, packet: Packet):
-        if not type(packet) is Packet:
-            print(packet)
-
         if type(packet) is ChatMessagePacket:
             data = {"type": "ChatMessagePacket", "packet": packet.json_data}
 
