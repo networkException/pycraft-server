@@ -1,11 +1,14 @@
 # stop server
 screen -X -S pycraft-server quit
 
+# update server
+git pull
+
 # stop clients
 pm2 stop pycraft-client-2
 pm2 stop pycraft-client-4
 
-#update clients
+# update clients
 npm run update --prefix /home/networkexception/projects/minecraft/pycraft-client-2
 npm run update --prefix /home/networkexception/projects/minecraft/pycraft-client-4
 
